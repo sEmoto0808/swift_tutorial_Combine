@@ -8,10 +8,17 @@ struct CustomError: Error {
 }
 
 
+// Combineにおける値のポストと購読
+// 値のポスト: Publisher
+// 購読: Subscriber
 
-// MARK: - CurrentValueSubject<型, Error>(型の初期値)
+
+
+// MARK: - CurrentValueSubject<型, Error>(型の初期値): Subject(つまりPublisher)
 let valueSubject = CurrentValueSubject<Int, Never>(3)
-/// : 値をポストできたり、現在の値を取得できたりするので、RxのBehabiorRelayに近い。
+/// : https://developer.apple.com/documentation/combine/currentvaluesubject
+/// : 値をポストできたり、最後にポストした値を保持するので、RxのBehabiorSubjectに近い。（onErrorやonCompleteに該当するイベントも流れるからRelayではない）
+/// : 購読されていない状態で値がポストされても保持する
 
 /// 現在の値
 print(valueSubject.value)
@@ -19,17 +26,33 @@ valueSubject.value = 1
 
 /// sink
 /// : CurrentValueSubjectを購読
-/// : sinkした時点で1回処理が実行されるから、CurrentValueSubjectはHot
 valueSubject.sink { current in
     print("current: \(current)")
 }
 
-/// send
+/// send(_:)
 /// : CurrentValueSubjectに値をポスト
 /// : 同じ値がsendされても発火する
 /// : valueで値を変更しても発火する。sendとvalueの違いは？
+/// : send()で変更した場合とvalueプロパティで変更した場合も同等の挙動
 valueSubject.send(10)
 valueSubject.value = 20
+
+
+
+// MARK: - PassthroughSubject<型, Error>: Subject(つまりPublisher)
+let passSubject = PassthroughSubject<Int, Never>()
+/// : https://developer.apple.com/documentation/combine/passthroughsubject
+/// : 値をポストするだけで、最後にポストした値は保持しない。RxのPublishSubjectに近い。（onErrorやonCompleteに該当するイベントも流れるからRelayではない）
+/// : 購読されていない状態で値がポストされても無視する
+
+passSubject.send(10)
+
+passSubject.sink { newValue in
+    print("newValue: \(newValue)")
+}
+
+passSubject.send(100)  // 「newValue: 100」のみ出力
 
 
 
