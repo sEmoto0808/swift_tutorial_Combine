@@ -163,3 +163,45 @@ deferredAsSingle
     })
 
 deferredSubject.send(10)
+
+
+
+// MARK: - Combineで一つのPublisherの出力結果を共有する時の注意点
+/// : Publisherの出力結果を共有するためのメソッドは以下の2つ
+/// : - share
+/// : - multicast
+/// : Rxのshare()を完璧に代替するメソッドは今のところなさそう
+
+/// share
+let sharePublisher = PassthroughSubject<Int, Never>().share()
+/// : Rxのshare()と同様の記述ができるが、購読するタイミングによっては2回目以降値が流れない可能性あり
+/// : 値が流れないのは、2回目以降の購読をする前にCompleteしている場合（replayの機能がない）
+
+/// multicast
+let multicastPublisher = PassthroughSubject<Int, Never>().multicast { PassthroughSubject<Int, Never>() }
+/// : connect()メソッドを呼ばない限り、大元のPublisherのイベントが流れない
+/// : 購読する前にCompleteしてしまう可能性を回避できる
+/// : ただし、正しいタイミングでconnect()メソッドを呼ぶ必要があるので実装に依存する
+
+var multicastCancellables: Set<AnyCancellable> = []
+
+/// 1回目の購読
+multicastPublisher
+    .sink { current in
+        print("1回目の購読: \(current)")
+    }
+    .store(in: &multicastCancellables)
+
+/// 2回目の購読
+multicastPublisher
+    .sink { current in
+        print("2回目の購読: \(current)")
+    }
+    .store(in: &multicastCancellables)
+
+/// コメントアウトすると処理は流れない
+multicastPublisher
+    .connect()
+    .store(in: &multicastCancellables)
+
+multicastPublisher.upstream.send(1)  // 出力結果 -> 1回目の購読: 1, 2回目の購読: 1
